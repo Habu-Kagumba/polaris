@@ -51,10 +51,15 @@ export function dateIsInRange(day: Date | null, range: Range) {
   return Boolean(start && day > start && end && day < end);
 }
 
-export function dateIsSelected(day: Date | null, range: Range) {
+export function dateIsSelected(day: Date | null, range: Range | Date[]) {
   if (day == null) {
     return false;
   }
+
+  if (Array.isArray(range)) {
+    return range.some((date) => isSameDay(date, day));
+  }
+
   const {start, end} = range;
 
   return Boolean(

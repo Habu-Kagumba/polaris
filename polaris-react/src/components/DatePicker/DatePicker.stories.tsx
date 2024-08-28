@@ -31,6 +31,11 @@ export const All = {
         </Box>
         <Box maxWidth="290px">
           <Card>
+            <MultiDate.render />
+          </Card>
+        </Box>
+        <Box maxWidth="290px">
+          <Card>
             <WithDisabledDateRanges.render />
           </Card>
         </Box>
@@ -118,6 +123,36 @@ export const MultiMonthRanged = {
         selected={selectedDates}
         multiMonth
         allowRange
+      />
+    );
+  },
+};
+
+export const MultiDate = {
+  render() {
+    const [{month, year}, setDate] = useState({month: 1, year: 2018});
+    const [selectedDates, setSelectedDates] = useState([
+      new Date('Wed Feb 03 2018 00:00:00 GMT-0500 (EST)'),
+      new Date('Wed Feb 05 2018 00:00:00 GMT-0500 (EST)'),
+      new Date('Wed Feb 13 2018 00:00:00 GMT-0500 (EST)'),
+      new Date('Wed Feb 15 2018 00:00:00 GMT-0500 (EST)'),
+      new Date('Wed Feb 28 2018 00:00:00 GMT-0500 (EST)'),
+    ]);
+
+    const handleMonthChange = useCallback(
+      (month, year) => setDate({month, year}),
+      [],
+    );
+
+    return (
+      <DatePicker
+        month={month}
+        year={year}
+        onMonthChange={handleMonthChange}
+        selected={selectedDates}
+        disableSelection
+        onFocus={console.log}
+        multiDate
       />
     );
   },

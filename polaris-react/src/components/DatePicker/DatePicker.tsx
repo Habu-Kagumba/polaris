@@ -25,7 +25,7 @@ export interface DatePickerProps {
   /** ID for the element */
   id?: string;
   /** The selected date or range of dates */
-  selected?: Date | Range;
+  selected?: Date | Date[] | Range;
   /** The month to show, from 0 to 11. 0 is January, 1 is February ... 11 is December */
   month: number;
   /** The year to show */
@@ -38,6 +38,10 @@ export interface DatePickerProps {
   disableDatesAfter?: Date;
   /** Disable specific dates. */
   disableSpecificDates?: Date[];
+  /** Disable selection of dates. */
+  disableSelection?: boolean;
+  /** The selection can be multiple dates **/
+  multiDate?: boolean;
   /** The selection can span multiple months */
   multiMonth?: boolean;
   /**
@@ -51,6 +55,8 @@ export interface DatePickerProps {
   onChange?(date: Range): void;
   /** Callback when month is changed. */
   onMonthChange?(month: number, year: number): void;
+  /** Callback when date is focused. */
+  onFocus?(date: Date): void;
 }
 
 export function DatePicker({
@@ -59,14 +65,17 @@ export function DatePicker({
   month,
   year,
   allowRange,
+  multiDate,
   multiMonth,
   disableDatesBefore,
   disableDatesAfter,
   disableSpecificDates,
-  weekStartsOn = 0,
   dayAccessibilityLabelPrefix,
+  disableSelection,
+  weekStartsOn = 0,
   onMonthChange,
   onChange = noop,
+  onFocus = noop,
 }: DatePickerProps) {
   const i18n = useI18n();
   const [hoverDate, setHoverDate] = useState<Date | undefined>(undefined);
@@ -76,9 +85,13 @@ export function DatePicker({
     setFocusDate(undefined);
   }, [selected]);
 
-  const handleFocus = useCallback((date: Date) => {
-    setFocusDate(date);
-  }, []);
+  const handleFocus = useCallback(
+    (date: Date) => {
+      setFocusDate(date);
+      onFocus(date);
+    },
+    [onFocus],
+  );
 
   const setFocusDateAndHandleMonthChange = useCallback(
     (date: Date) => {
@@ -87,8 +100,9 @@ export function DatePicker({
       }
       setHoverDate(date);
       setFocusDate(date);
+      onFocus(date);
     },
-    [onMonthChange],
+    [onMonthChange, onFocus],
   );
 
   const handleDateSelection = useCallback(
@@ -99,7 +113,7 @@ export function DatePicker({
       setFocusDate(new Date(end));
       onChange(range);
     },
-    [onChange],
+    [onChange, multiDate],
   );
 
   const handleMonthChangeClick = useCallback(
@@ -122,7 +136,7 @@ export function DatePicker({
       const {key} = event;
 
       const range = deriveRange(selected);
-      const focusedDate = focusDate || (range && range.start);
+      const focusedDate = focusDate || (range && (range as Range).start);
 
       if (focusedDate == null) {
         return;
@@ -237,7 +251,7 @@ export function DatePicker({
       year={showNextYear}
       selected={monthIsSelected}
       hoverDate={hoverDate}
-      onChange={handleDateSelection}
+      onChange={disableSelection ? noop : handleDateSelection}
       onHover={handleHover}
       disableDatesBefore={disableDatesBefore}
       disableDatesAfter={disableDatesAfter}
@@ -253,9 +267,12 @@ export function DatePicker({
   return (
     <div
       id={id}
-      className={datePickerClassName}
+      className={`${datePickerClassName} ${
+        disableSelection ? 'disableSelection' : ''
+      }`}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
+      onMouseLeave={() => setHoverDate(undefined)}
     >
       <div className={styles.Header}>
         <Button
@@ -290,7 +307,7 @@ export function DatePicker({
           year={year}
           selected={deriveRange(selected)}
           hoverDate={hoverDate}
-          onChange={handleDateSelection}
+          onChange={disableSelection ? noop : handleDateSelection}
           onHover={handleHover}
           disableDatesBefore={disableDatesBefore}
           disableDatesAfter={disableDatesAfter}
@@ -298,6 +315,7 @@ export function DatePicker({
           allowRange={allowRange}
           weekStartsOn={weekStartsOn}
           accessibilityLabelPrefixes={accessibilityLabelPrefixes}
+          multiDate={multiDate}
         />
         {secondDatePicker}
       </div>
@@ -321,6 +339,6 @@ function handleKeyDown(event: React.KeyboardEvent<HTMLElement>) {
   }
 }
 
-function deriveRange(selected?: Date | Range) {
+function deriveRange(selected?: Date | Date[] | Range) {
   return selected instanceof Date ? {start: selected, end: selected} : selected;
 }

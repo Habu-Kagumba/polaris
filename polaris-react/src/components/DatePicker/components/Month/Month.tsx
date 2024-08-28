@@ -21,7 +21,7 @@ import {monthName, weekdayName} from '../../utilities';
 
 export interface MonthProps {
   focusedDate?: Date;
-  selected?: Range;
+  selected?: Range | Date[];
   hoverDate?: Date;
   month: number;
   year: number;
@@ -31,7 +31,8 @@ export interface MonthProps {
   allowRange?: boolean;
   weekStartsOn: number;
   accessibilityLabelPrefixes: [string | undefined, string];
-  onChange?(date: Range): void;
+  multiDate?: boolean;
+  onChange?(date: Range | Date[]): void;
   onHover?(hoverEnd: Date): void;
   onFocus?(date: Date): void;
 }
@@ -51,6 +52,7 @@ export function Month({
   year,
   weekStartsOn,
   accessibilityLabelPrefixes,
+  multiDate,
 }: MonthProps) {
   const i18n = useI18n();
 
@@ -74,9 +76,18 @@ export function Month({
 
   const handleDateClick = useCallback(
     (selectedDate: Date) => {
-      onChange(getNewRange(allowRange ? selected : undefined, selectedDate));
+      if (multiDate && Array.isArray(selected)) {
+        onChange([...(selected || []), selectedDate]);
+      } else {
+        onChange(
+          getNewRange(
+            allowRange ? (selected as Range) : undefined,
+            selectedDate,
+          ),
+        );
+      }
     },
-    [allowRange, onChange, selected],
+    [allowRange, onChange, multiDate, selected],
   );
 
   const lastDayOfMonth = useMemo(
@@ -87,7 +98,12 @@ export function Month({
   function renderWeek(day: Date, dayIndex: number) {
     if (day == null) {
       return (
-        <Day key={dayIndex} onHover={onHover} lastDayOfMonth={lastDayOfMonth} />
+        <Day
+          key={dayIndex}
+          onHover={onHover}
+          lastDayOfMonth={lastDayOfMonth}
+          onClick={handleDateClick}
+        />
       );
     }
     const disabled =
@@ -96,19 +112,23 @@ export function Month({
       (disableSpecificDates && isDateDisabled(day, disableSpecificDates));
 
     const isFirstSelectedDay =
-      allowRange && selected && isDateStart(day, selected);
+      allowRange && selected && isDateStart(day, selected as Range);
     const isLastSelectedDay =
       allowRange &&
       selected &&
-      ((!isSameDay(selected.start, selected.end) && isDateEnd(day, selected)) ||
+      ((!isSameDay((selected as Range).start, (selected as Range).end) &&
+        isDateEnd(day, selected as Range)) ||
         (hoverDate &&
-          isSameDay(selected.start, selected.end) &&
-          isDateAfter(hoverDate, selected.start) &&
+          isSameDay((selected as Range).start, (selected as Range).end) &&
+          isDateAfter(hoverDate, (selected as Range).start) &&
           isSameDay(day, hoverDate) &&
           !isFirstSelectedDay));
-    const rangeIsDifferent = !(
-      selected && isSameDay(selected.start, selected.end)
-    );
+    const rangeIsDifferent = multiDate
+      ? false
+      : !(
+          selected &&
+          isSameDay((selected as Range).start, (selected as Range).end)
+        );
     const isHoveringRight = hoverDate && isDateBefore(day, hoverDate);
     const [firstAccessibilityLabelPrefix, lastAccessibilityLabelPrefix] =
       accessibilityLabelPrefixes;
@@ -134,12 +154,17 @@ export function Month({
         onClick={handleDateClick}
         onHover={onHover}
         selected={selected != null && dateIsSelected(day, selected)}
-        inRange={selected != null && dateIsInRange(day, selected)}
+        inRange={
+          allowRange &&
+          selected != null &&
+          dateIsInRange(day, selected as Range)
+        }
         disabled={disabled}
         inHoveringRange={
+          allowRange &&
           selected != null &&
           hoverDate != null &&
-          isInHoveringRange(day, selected, hoverDate)
+          isInHoveringRange(day, selected as Range, hoverDate)
         }
         isLastSelectedDay={isLastSelectedDay}
         isFirstSelectedDay={isFirstSelectedDay}
@@ -192,6 +217,7 @@ function hoveringDateIsInRange(
   if (day == null) {
     return false;
   }
+
   const {start, end} = range;
   return Boolean(isSameDay(start, end) && day > start && day <= hoverEndDate);
 }
@@ -205,6 +231,7 @@ function isDateEnd(day: Date | null, range: Range) {
 
 function isDateStart(day: Date | null, range: Range) {
   if (day == null) return false;
+
   const {start} = range;
 
   return Boolean(start && isSameDay(start, day));
